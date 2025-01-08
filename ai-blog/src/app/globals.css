@@ -1,0 +1,39 @@
+@import url('https://fonts.geist-ui.dev/font-face.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.logo-container img {
+  object-fit: contain;
+}
+
+@media (max-width: 768px) {
+  .logo-container {
+    width: 32px;
+    height: 32px;
+  }
+}
