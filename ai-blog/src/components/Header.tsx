@@ -25,7 +25,7 @@ const menuItems: MenuProps['items'] = [
 const HEADER_HEIGHT = '64px';
 const LOGO_SIZE = 120;
 
-export default function Header() {
+function Header() {
   const [visible, setVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -104,3 +104,5 @@ export default function Header() {
     </AntHeader>
   );
 }
+
+export default Header;
