@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const config = {
-  transpilePackages: ['@ant-design'],
+  transpilePackages: ['antd', '@ant-design'], // 按需加载 antd
   images: {
     // 配置允许的远程图片域名
     remotePatterns: [
@@ -9,6 +9,9 @@ const config = {
         hostname: '**',
       },
     ],
+  },
+  experimental: {
+    forceSwcTransforms: true, // 强制使用 SWC
   },
 };
 

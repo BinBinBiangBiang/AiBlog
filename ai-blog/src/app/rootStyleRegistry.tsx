@@ -1,9 +1,10 @@
 'use client';
-import { useState, type PropsWithChildren } from 'react';
+import { useState } from 'react';
 import { useServerInsertedHTML } from 'next/navigation';
 import { createCache, extractStyle, StyleProvider } from '@ant-design/cssinjs';
 
-export const RootStyleRegistry = ({ children }: PropsWithChildren) => {
+export const RootStyleRegistry = ({ children }: { children: React.ReactNode }) => {
+  //Use ReactNode instead of PropsWithChildren
   const [cache] = useState(() => createCache());
 
   useServerInsertedHTML(() => {

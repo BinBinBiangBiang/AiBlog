@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@ant-design/cssinjs": "^1.22.1",
+    "@ant-design/icons": "^5.5.2",
     "antd": "^5.22.7",
-    "next": "14.1.0",
+    "axios": "^1.7.9",
+    "next": "15.1.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -21,10 +23,10 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5"
   },
   "engines": {
