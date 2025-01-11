@@ -1,4 +1,4 @@
-export default function About() {
+export default function ServerAbout() {
   return (
     <>
       <h1>About111 Page111222</h1>

@@ -18,6 +18,9 @@ interface HistoryItem {
   messages: Message[];
 }
 
+const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
+const apiUrl = process.env.NEXT_PUBLIC_DEEPSEEK_API_BASE_URL;
+
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -45,14 +48,14 @@ export default function Chat() {
     try {
       // 调用 DeepSeek API
       const response = await axios.post(
-        'https://api.deepseek.com/v1/chat/completions', // DeepSeek API 地址
+        `${apiUrl}`, // DeepSeek API 地址
         {
           model: 'deepseek-chat', // 使用的模型
           messages: [{ role: 'user', content: inputValue }],
         },
         {
           headers: {
-            Authorization: `Bearer sk-5f862c8d00534bfd819ba100c6b93f68`, // 你的 API Key
+            Authorization: `Bearer ${apiKey}`, // 你的 API Key
             'Content-Type': 'application/json',
           },
         }
