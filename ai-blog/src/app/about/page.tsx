@@ -1,13 +1,11 @@
 'use client';
 
-import { Layout } from 'antd';
 import ServerAbout from './server/index';
-const { Content } = Layout;
 
 export default function About() {
   return (
-    <Content style={{ padding: '24px' }}>
+    <div style={{ padding: '24px' }} className="w-300 h-400 bg-cyan-800">
       <ServerAbout />
-    </Content>
+    </div>
   );
 }
