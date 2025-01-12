@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <RootStyleRegistry>
           <Header />
-          <main style={{ marginTop: '64px', minHeight: 'calc(100vh - 64px)' }}>{children}</main>
+          <main>{children}</main>
         </RootStyleRegistry>
       </body>
     </html>

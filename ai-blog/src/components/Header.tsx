@@ -4,8 +4,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { MenuProps } from 'antd';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 const { Header: AntHeader } = Layout;
+const accessLink = ['/', '/about', '/chat'];
 
 const menuItems: MenuProps['items'] = [
   {
@@ -29,6 +31,8 @@ function Header() {
   const [visible, setVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
+  const pathName = usePathname();
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -46,6 +50,7 @@ function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
+  if (!accessLink.includes(pathName)) return null;
   return (
     <AntHeader
       style={{
