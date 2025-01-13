@@ -13,6 +13,7 @@ const config = {
   experimental: {
     forceSwcTransforms: true, // 强制使用 SWC
   },
+  reactStrictMode: false,
 };
 
 module.exports = config;
