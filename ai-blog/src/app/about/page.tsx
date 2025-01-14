@@ -1,14 +1,14 @@
 'use client';
 
-import axios from 'axios';
 import { useState, useEffect, use } from 'react';
+import http from '@/lib/http';
 
 export default function About() {
   const [inputValue, setInputValue] = useState<any>([]);
   const fetchUsers = async () => {
-    const res = await axios.get('http://localhost:3000/api/users');
+    const res = await http.get('api/users');
     console.log('res.data=========>', res.data.data);
-    setInputValue(res.data.data);
+    setInputValue(res.data);
     // 使用 data
   };
 
@@ -25,9 +25,9 @@ export default function About() {
       后端下发数据：{' '}
       {inputValue.map((item: any, index: any) => {
         return (
-          <div>
+          <div key={index}>
             <ul>
-              <li key={index}>
+              <li>
                 <p>name: {item.name}</p>
                 <p>email: {item.email}</p>
                 <p>password: {item.password}</p>
