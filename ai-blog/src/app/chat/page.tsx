@@ -50,8 +50,14 @@ const ChatPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: input, conversation_id: conversationId, user_id: 1 }),
+        body: JSON.stringify({ content: input, conversation_id: conversationId, user_id: 4 }),
       });
+
+      // 如果是前端或者后端接口报错 直接return
+      if (!response.ok) {
+        console.error('Failed to send message:', response.statusText);
+        return;
+      }
 
       const reader = response.body?.getReader();
       if (reader) {
