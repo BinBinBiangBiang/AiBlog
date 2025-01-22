@@ -7,7 +7,7 @@ export default function About() {
   const [inputValue, setInputValue] = useState<any>([]);
   const fetchUsers = async () => {
     const res = await http.get('api/users');
-    console.log('res.data=========>', res.data.data);
+    console.log('res.data=========>', res.data);
     setInputValue(res.data);
     // 使用 data
   };

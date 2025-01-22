@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { Readable } from 'stream';
 
 // 创建 axios 实例
 const http: AxiosInstance = axios.create({

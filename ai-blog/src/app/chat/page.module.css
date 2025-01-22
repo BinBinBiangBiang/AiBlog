@@ -1,7 +1,7 @@
 .container {
   display: flex;
-  height: calc(100vh - 64px);
-  margin-top: 64px;
+  height: calc(100vh - 64px); /* 减去头部高度 */
+  margin-top: 64px; /* 头部高度 */
   background-color: #f7f7f7;
 }
 
@@ -11,6 +11,7 @@
   border-right: 1px solid #e8e8e8;
   display: flex;
   flex-direction: column;
+  height: 100%; /* 确保侧边栏占满高度 */
 }
 
 .sidebarHeader {
@@ -26,21 +27,24 @@
 .menu {
   flex: 1;
   border-right: none;
+  overflow-y: auto; /* 允许侧边栏内容滚动 */
 }
 
 .chatContainer {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%; /* 确保聊天容器占满高度 */
 }
 
 .chatWindow {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto; /* 允许聊天内容滚动 */
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: calc(100% - 72px); /* 减去输入框高度 */
 }
 
 .message {
@@ -89,22 +93,26 @@
   padding: 16px;
   background-color: #fff;
   border-top: 1px solid #e8e8e8;
+  height: 72px; /* 固定输入框高度 */
 }
 
 .inputWrapper {
   display: flex;
   gap: 8px;
   align-items: center;
+  height: 100%;
 }
 
 .textArea {
   flex: 1;
   border-radius: 8px;
   resize: none;
+  height: 100%; /* 输入框占满容器高度 */
 }
 
 .sendButton {
   border-radius: 8px;
+  height: 100%; /* 按钮占满容器高度 */
 }
 
 .loading {

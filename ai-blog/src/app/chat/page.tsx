@@ -1,171 +1,153 @@
 'use client';
-import { useState } from 'react';
-import { Input, Button, Avatar, Spin, Menu, message } from 'antd';
-import { SendOutlined, UserOutlined, RobotOutlined, HistoryOutlined } from '@ant-design/icons';
-import axios from 'axios';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Avatar, Input, Button, List, Spin } from 'antd'; // 使用 Ant Design 组件库
+import { UserOutlined, RobotOutlined } from '@ant-design/icons'; // 用户和 AI 头像
+import http from '@/lib/http'; // 假设你使用 axios 封装了 http 请求
 import styles from './page.module.css';
-
-interface Message {
-  id: number;
-  content: string;
-  isUser: boolean;
-  timestamp: Date;
-}
-
-interface HistoryItem {
-  id: number;
-  title: string;
-  messages: Message[];
-}
-
-const apiKey = process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY;
-const apiUrl = process.env.NEXT_PUBLIC_DEEPSEEK_API_BASE_URL;
-
-export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputValue, setInputValue] = useState('');
+const ChatPage = () => {
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null); // 会话 ID
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) {
-      message.warning('请输入内容');
-      return;
-    }
-
-    const userMessage: Message = {
-      id: Date.now(),
-      content: inputValue,
-      isUser: true,
-      timestamp: new Date(),
+  // 获取或创建 conversationId
+  useEffect(() => {
+    const fetchConversationId = async () => {
+      try {
+        const response = await http.post('/api/conversations', {
+          user_id: 1, // 假设 user_id 为 1
+          title: 'New Conversation',
+        });
+        setConversationId(response.data.conversation_id);
+      } catch (error) {
+        console.error('Failed to fetch conversation ID:', error);
+      }
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    fetchConversationId();
+  }, []);
+
+  // 滚动到底部
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 发送消息
+  const sendMessage = async () => {
+    if (!input.trim() || !conversationId) return;
+
     setLoading(true);
+    const userMessage = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
 
     try {
-      // 调用 DeepSeek API
-      const response = await axios.post(
-        `${apiUrl}`, // DeepSeek API 地址
-        {
-          model: 'deepseek-chat', // 使用的模型
-          messages: [{ role: 'user', content: inputValue }],
+      let aiResponse = '';
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`, // 你的 API Key
-            'Content-Type': 'application/json',
-          },
+        body: JSON.stringify({ content: input, conversation_id: conversationId, user_id: 1 }),
+      });
+
+      const reader = response.body?.getReader();
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = new TextDecoder().decode(value);
+          aiResponse += chunk;
+
+          // 更新 AI 回复
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.role === 'assistant') {
+              return [...prev.slice(0, -1), { role: 'assistant', content: aiResponse }];
+            } else {
+              return [...prev, { role: 'assistant', content: aiResponse }];
+            }
+          });
+
+          scrollToBottom(); // 每次更新消息后滚动到底部
         }
-      );
-
-      const aiResponse = response.data.choices[0].message.content;
-
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        content: aiResponse,
-        isUser: false,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-
-      // 如果当前没有选中历史记录，则创建新的历史记录
-      if (!selectedHistoryId) {
-        const newHistoryItem: HistoryItem = {
-          id: Date.now(),
-          title: inputValue.substring(0, 20) + '...', // 截取前20个字符作为标题
-          messages: [userMessage, aiMessage],
-        };
-        setHistory(prev => [...prev, newHistoryItem]);
       }
     } catch (error) {
-      message.error('请求失败');
-      console.error('API 请求失败:', error);
+      console.error('Failed to send message:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleHistoryClick = (id: number) => {
-    const selectedHistory = history.find(item => item.id === id);
-    if (selectedHistory) {
-      setMessages(selectedHistory.messages);
-      setSelectedHistoryId(id);
-    }
-  };
+  // 页面加载时滚动到底部
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   return (
     <div className={styles.container}>
-      {/* 左侧菜单栏 */}
+      {/* 侧边栏 */}
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
-          <HistoryOutlined />
-          <span>历史记录</span>
+          <span>Chat History</span>
         </div>
-        <Menu
-          mode="inline"
-          selectedKeys={selectedHistoryId ? [selectedHistoryId.toString()] : []}
-          className={styles.menu}
-        >
-          {history.map(item => (
-            <Menu.Item key={item.id} onClick={() => handleHistoryClick(item.id)}>
-              {item.title}
-            </Menu.Item>
-          ))}
-        </Menu>
+        <div className={styles.menu}>{/* 这里可以放置聊天历史记录 */}</div>
       </div>
 
-      {/* 聊天区域 */}
+      {/* 聊天窗口 */}
       <div className={styles.chatContainer}>
         <div className={styles.chatWindow}>
-          {messages.map(item => (
+          {messages.map((message, index) => (
             <div
-              key={item.id}
-              className={`${styles.message} ${item.isUser ? styles.userMessage : styles.aiMessage}`}
+              key={index}
+              className={`${styles.message} ${
+                message.role === 'user' ? styles.userMessage : styles.aiMessage
+              }`}
             >
               <div className={styles.avatar}>
-                <Avatar
-                  icon={item.isUser ? <UserOutlined /> : <RobotOutlined />}
-                  style={{ backgroundColor: item.isUser ? '#87d068' : '#1890ff' }}
-                />
+                {message.role === 'user' ? (
+                  <Avatar icon={<UserOutlined />} />
+                ) : (
+                  <Avatar icon={<RobotOutlined />} />
+                )}
               </div>
               <div className={styles.content}>
-                <div className={styles.text}>{item.content}</div>
+                <div className={styles.text}>{message.content}</div>
               </div>
             </div>
           ))}
-          {loading && (
-            <div className={styles.loading}>
-              <Spin size="small" />
-            </div>
-          )}
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* 输入框区域 */}
+        {/* 输入框 */}
         <div className={styles.inputContainer}>
           <div className={styles.inputWrapper}>
             <Input.TextArea
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onPressEnter={handleSend}
-              rows={1}
-              placeholder="输入你的问题..."
-              autoSize={{ minRows: 1, maxRows: 6 }}
               className={styles.textArea}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onPressEnter={sendMessage}
+              placeholder="Type your message..."
+              disabled={loading || !conversationId}
+              autoSize={{ minRows: 1, maxRows: 4 }}
             />
             <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              loading={loading}
               className={styles.sendButton}
-            />
+              type="primary"
+              onClick={sendMessage}
+              loading={loading}
+              disabled={!conversationId}
+            >
+              Send
+            </Button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default ChatPage;
