@@ -1,78 +1,117 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-
 import OpenAI from 'openai';
 
-// 创建 OpenAI 实例 并配置 API 密钥
+// 创建 OpenAI 实例
 const openai = new OpenAI({
   baseURL: 'https://api.deepseek.com',
   apiKey: `${process.env.NEXT_PUBLIC_DEEPSEEK_API_KEY}`,
 });
 
-export async function GET(request: Request, { params }: { params: { conversationId: string } }) {
+// 获取会话的所有消息
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { conversationId: string } }
+) {
   const conversationId = params.conversationId;
-  const [messages] = await pool.query(
-    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
-    [conversationId]
-  );
-  return NextResponse.json({ data: messages });
+
+  try {
+    const [messages] = await pool.query(
+      'SELECT * FROM messages WHERE conversation_id = ? AND seedStatus = 1 ORDER BY created_at ASC',
+      [conversationId]
+    );
+
+    return NextResponse.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    return NextResponse.json({ error: '获取消息失败' }, { status: 500 });
+  }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: { conversation_id: string; user_id: number; content: string } }
-) {
-  const { content, user_id, conversation_id } = await request.json();
+// 发送消息到AI并获取回复
+export async function POST(request: Request, { params }: { params: { conversationId: string } }) {
+  const conversationId = params.conversationId;
+  const { content, user_id } = await request.json();
   let aiResponse = '';
+
   try {
-    // 校验参数是否正确
-    if (!conversation_id || !content || !user_id) {
-      return NextResponse.json({ error: '传参缺失！' }, { status: 400 });
+    // 校验参数
+    if (!conversationId || !content || !user_id) {
+      return NextResponse.json({ error: '参数不完整' }, { status: 400 });
     }
 
     // 查询用户是否存在
     const [user] = await pool.query('SELECT * FROM users WHERE user_id = ?', [user_id]);
     const userArray = user as any[];
-    console.log('User query result:', user);
     if (!userArray || userArray.length === 0) {
-      return NextResponse.json({ error: '用户不存在！' }, { status: 400 });
+      return NextResponse.json({ error: '用户不存在' }, { status: 400 });
     }
 
-    // 保存用户消息到数据库
-    const [userMessage] = await pool.query(
+    // 保存用户消息
+    await pool.query(
       'INSERT INTO messages (conversation_id, role, content, user_id, seedStatus) VALUES (?, ?, ?, ?, ?)',
-      [conversation_id, 'user', content, user_id, 1] // 假设 user_id 为 1
+      [conversationId, 'user', content, user_id, 1]
     );
 
-    console.log('User message saved:', userMessage);
+    // 获取此会话的前几条消息作为上下文
+    const [previousMessages]: any = await pool.query(
+      'SELECT role, content FROM messages WHERE conversation_id = ? AND seedStatus = 1 ORDER BY created_at DESC LIMIT 10',
+      [conversationId]
+    );
+
+    // 转换为OpenAI格式的消息数组（最新的消息在最后）
+    const messageHistory = previousMessages
+      .reverse()
+      .map((msg: any) => ({ role: msg.role, content: msg.content }));
+
+    // 更新会话标题（如果是第一条消息）
+    const [messageCount]: any = await pool.query(
+      'SELECT COUNT(*) as count FROM messages WHERE conversation_id = ?',
+      [conversationId]
+    );
+
+    if (messageCount[0].count <= 2) {
+      // 使用用户的第一条消息作为会话标题（截取部分）
+      const title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+      await pool.query(
+        'UPDATE conversations SET title = ?, updated_at = NOW() WHERE conversation_id = ?',
+        [title, conversationId]
+      );
+    } else {
+      // 更新会话的更新时间
+      await pool.query('UPDATE conversations SET updated_at = NOW() WHERE conversation_id = ?', [
+        conversationId,
+      ]);
+    }
 
     // 创建流式响应
     const stream = new ReadableStream({
       async start(controller) {
-        // 调用 DeepSeek API
+        // 调用AI API
         const completion = await openai.chat.completions.create({
           model: 'deepseek-chat',
           messages: [
-            { role: 'system', content: 'You are a helpful assistant.' }, // 系统提示
-            { role: 'user', content }, // 用户消息
+            { role: 'system', content: 'You are a helpful assistant.' },
+            ...messageHistory,
           ],
-          stream: true, // 启用流式响应
+          stream: true,
         });
 
         // 处理流式响应
         for await (const chunk of completion) {
           const contentChunk = chunk.choices[0]?.delta?.content || '';
           if (contentChunk) {
-            aiResponse += contentChunk; // 逐步拼接 AI 回复
-            controller.enqueue(new TextEncoder().encode(contentChunk)); // 发送给客户端
+            aiResponse += contentChunk;
+            controller.enqueue(new TextEncoder().encode(contentChunk));
           }
         }
 
-        // 流式响应结束，保存完整的 AI
+        // 保存AI回复
         await pool.query(
           'INSERT INTO messages (conversation_id, role, content, user_id, seedStatus) VALUES (?, ?, ?, ?, ?)',
-          [conversation_id, 'assistant', aiResponse, user_id, 1]
+          [conversationId, 'assistant', aiResponse, user_id, 1]
         );
+
         controller.close();
       },
     });
@@ -82,11 +121,11 @@ export async function POST(
     });
   } catch (error) {
     console.error('Error:', error);
-    // AI对话失败，不保存记录，记录seedStatus为0
+    // 记录失败
     await pool.query(
       'INSERT INTO messages (conversation_id, role, content, user_id, seedStatus) VALUES (?, ?, ?, ?, ?)',
-      [conversation_id, 'user', aiResponse, user_id, 0]
+      [conversationId, 'system', '消息处理失败', user_id, 0]
     );
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: '内部服务器错误' }, { status: 500 });
   }
 }
